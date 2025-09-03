@@ -1,10 +1,11 @@
 import asyncio
 import random
+import os
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes, CommandHandler
 
-TOKEN = "8471689023:AAFZZqQ6KGs5EXuP0mtUqpQXkhK0ZB0rBBA"
-ADMIN_ID = 1437371039  # твой Telegram ID
+TOKEN = os.getenv("BOT_TOKEN", "ТОКЕН_ПО_УМОЛЧАНИЮ")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "1437371039"))
 
 # Таблица значений (1–64)
 slot_table = {
@@ -79,7 +80,7 @@ async def handle_dice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.message.from_user
 
         if emoji == "🎰":
-            await asyncio.sleep(2)  # задержка
+            await asyncio.sleep(2)
             combo = slot_table.get(value, f"неизвестно ({value})")
             mention = f"@{user.username}" if user.username else user.first_name
 
@@ -89,28 +90,28 @@ async def handle_dice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 msg_link = "(группа приватная, ссылка недоступна)"
 
-            if combo == "7️⃣7️⃣7️⃣":  # джекпот
+            if combo == "7️⃣7️⃣7️⃣":
                 reply = f"{mention} покрутил и выпало:\n {combo}\n{random.choice(jackpot_responses)}"
                 await context.bot.send_message(
                     chat_id=ADMIN_ID,
                     text=f"🔥 У {mention} выпал ДЖЕКПОТ! 🎰 ({combo})\nСсылка: {msg_link}"
                 )
 
-            elif combo == "🍋🍋🍋":  # средний выигрыш
+            elif combo == "🍋🍋🍋":
                 reply = f"{mention} покрутил и выпало:\n {combo}\n{random.choice(medium_responses)}"
                 await context.bot.send_message(
                     chat_id=ADMIN_ID,
                     text=f"⚡ У {mention} средний выигрыш! 🍋🍋🍋 ({combo})\nСсылка: {msg_link}"
                 )
 
-            elif combo == "🍒🍒🍒":  # маленький выигрыш
+            elif combo == "🍒🍒🍒":
                 reply = f"{mention} покрутил и выпало:\n {combo}\n{random.choice(small_responses)}"
                 await context.bot.send_message(
                     chat_id=ADMIN_ID,
                     text=f"🍒 У {mention} маленький выигрыш! 🍒🍒🍒 ({combo})\nСсылка: {msg_link}"
                 )
 
-            else:  # проигрыш
+            else:
                 reply = f"{mention} покрутил и выпало:\n {combo}\n{random.choice(lose_responses)}"
 
         else:
@@ -123,8 +124,17 @@ def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Dice.ALL, handle_dice))
-    print("Бот запущен...")
-    app.run_polling()
+
+    port = int(os.getenv("PORT", "10000"))
+    url = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+    print("Бот запущен на webhook...")
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=TOKEN,
+        webhook_url=f"https://{url}/{TOKEN}"
+    )
 
 if __name__ == "__main__":
     main()
